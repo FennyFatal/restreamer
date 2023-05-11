@@ -1,5 +1,7 @@
 node_modules
 .env
-public/bundle.js
-public/bundle.css
 .vercel
+public/*.js
+public/*.css
+public/*.woff
+public/*.woff2

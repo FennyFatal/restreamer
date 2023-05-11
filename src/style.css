@@ -1,0 +1,45 @@
+::-webkit-scrollbar {display:none;}
+
+body {
+  font-family: "JetBrains Mono";
+  background-color:#35393e;
+}
+
+.video-container {
+  flex: 0 0 auto;
+  margin: 0px;
+}
+
+.chat-container {
+  overflow: scroll;
+}
+
+.chat-message {
+  color: white;
+}
+
+.refresh-button {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 1;
+  border-width: 3px;
+  margin: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: none;
+  cursor: pointer;
+}
+
+.refresh-icon {
+  filter: invert(1);
+}
+
+.video-js {
+  background-color:#35393e;
+}
+
+.video-player {
+  position: relative;
+  top: 0;
+  left: 0;
+}

@@ -1,18 +1,49 @@
-const React = require('react');
+import React, { useRef, useState, useLayoutEffect } from "react";
 import videojs from "video.js";
+import { createRoot } from 'react-dom/client';
+import useWebsocket from 'react-use-websocket'
+import useStayScrolled from 'react-stay-scrolled';
 import "video.js/dist/video-js.css";
-const { createRoot } = require('react-dom/client');
-
+import "./style.css"
+import "@fontsource/jetbrains-mono";
 
 const App = () => {
   const queryParameters = new URLSearchParams(window.location.search)
-  const videoSelected = (queryParameters.get("ids") ?? '0,1,2,3,10,9,4,5,7,8,6').split(',').filter(x => x != '').map(x => { try { return parseInt(x) } catch { return null }}).filter(x => x != null)
+  const videoSelected = (queryParameters.get("ids") ?? '0,1,2,3,10,9,4,5,7,8,6,chat').split(',').filter(x => x != '').map(x => {
+    const val = parseInt(x)
+    return !Number.isNaN(val) ? val: x 
+  }).filter(x => x != null)
   const videoRef = Array(11).fill(1).map(x => React.useRef());
+  const [token, setToken] = useState();
   const videoIndexes = videoSelected.length ? videoSelected : Object.keys(videoRef).filter(x => x != null);
+  console.log(videoIndexes)
+  const {
+    lastMessage,
+  } = useWebsocket(token)
+  const messageListRef = useRef([])
+  const listRef = useRef()
+  let stayScrolled;
+  if (videoIndexes.includes('chat'))
+    stayScrolled = useStayScrolled(listRef).stayScrolled
+
+  React.useEffect(() => {
+    if (!lastMessage) return;
+    try {
+    const data = JSON.parse(lastMessage.data)
+    if (data.command != 'message') return;
+    if (messageListRef.current.length > 100)
+      messageListRef.current.shift()
+    messageListRef.current.push(data)
+    console.log(data)
+    try {
+      stayScrolled();
+    } catch {}
+    } catch {}
+  }, [lastMessage])
 
   React.useEffect(() => {
     (async () => {
-      videoIndexes.map( (i) => {
+      videoIndexes.filter(x => x != undefined && x != 'chat').map( (i) => {
         const videoNode = videoRef[i].current;
 
         const source = {
@@ -27,23 +58,111 @@ const App = () => {
             autoplay: true,
             controls: true,
             preload: "metadata",
-            sources: Array(100).fill(source)
+            sources: [source]
           });
 
           const replay = async (e) => {
             console.log('error', e)
-            player.src(Array(100).fill(source))
+            player.src([source])
           }
           player.on('playbackError', replay)
           player.on('error', replay)
           videoRef[i].current.handleError = replay
         }
       })
+      setToken(`wss://prod.chat.fishtank.live/?authToken=${await fetch('/api/token').then(x => x.text())}`)
     })()
-    return;
   }, [])
   
   const [hoveredVideo, setHoveredVideo] = React.useState(-1)
+
+  const calculateFactor = (total) => {
+    if ( total <= 1 ) return 1;
+    if ( total <= 4 ) return 2;
+    return 3;
+  };
+
+  const renderChat = (total) => (
+    <div
+      ref={listRef}
+      className="chat-container"
+      style={{
+        width: `calc((((100vh / 9) * 16) - ((100vh / 9) * 8) - ((100vh / 9) * (16 / 3))) * ${3 / calculateFactor(total)} )`,
+        height: `calc(100vh / ${calculateFactor(total)})`
+      }}
+      
+    >
+      {messageListRef.current.map((x) => (
+        <p className="chat-message">
+          <span
+            style={{ color: x?.payload?.user?.customUsernameColor ?? "white" }}
+          >
+            {x?.payload?.user?.displayName ?? "UNKNOWN USER"}
+          </span>
+          : {`${x?.payload?.message}`}
+        </p>
+      ))}
+    </div>
+  );
+  
+  const renderRefreshButton = (i) => (
+    <button
+      className="refresh-button dash-replay-button"
+      onClick={() => videoRef[i]?.current?.handleError()}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="20px"
+        className="refresh-icon"
+        viewBox="0 0 16 20"
+      >
+        <g fill="none" fillRule="evenodd" stroke="none" strokeWidth="1">
+          <g fill="#000" transform="translate(-2 -127)">
+            <g transform="translate(2 127)">
+              <path d="M8 4V0L3 5l5 5V6c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H0c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"></path>
+            </g>
+          </g>
+        </g>
+      </svg>
+    </button>
+  );
+
+  const renderVideo = (i) => (
+    <div
+      key={i}
+      className="video-container"
+      onMouseEnter={() => setHoveredVideo(i)}
+      onMouseLeave={() => setHoveredVideo(-1)}
+      style={{
+        width: `calc((100vh / 9) * (16 / ${
+          calculateFactor(videoIndexes.length) * ((i == 6 ? 3 : 4) / 3)
+        }))`,
+        height: `calc(100vh / ${calculateFactor(videoIndexes.length)})`
+      }}
+    >
+      <div>
+        <div style={{ position: "relative" }}>
+          {hoveredVideo === i && renderRefreshButton(i)}
+        </div>
+        <div data-vjs-player className="video-player">
+          <video
+            style={{
+              width: `calc((100vh / 9) * (16 / ${
+                calculateFactor(videoIndexes.length) * ((i == 6 ? 3 : 4) / 3)
+              }))`,
+              height: `calc(100vh / ${calculateFactor(videoIndexes.length)})`
+            }}
+            onError={() => videoRef[i]?.current?.handleError()}
+            muted={true}
+            controls={true}
+            ref={videoRef[i]}
+            className="video-js"
+          />
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div
@@ -55,72 +174,11 @@ const App = () => {
         height: '100%',
         alignItems: "auto",
         alignContent: "flex-end",
-        overflowY: "hidden"
+        overflowY: "hidden",
+        margin: "-10px",
       }}
     >
-      {videoIndexes.map((i) => (
-        <div
-          key={i}
-          style={{
-            flex: "0 0 auto",
-            margin: "0px",
-            width: `calc((100vh / 9) * (16 / ${
-              (Math.ceil(videoIndexes.length > 3 ? (i == 6 ? 3 : 4) : videoIndexes.length))
-            }) - 10px)`,
-          }}
-          onMouseEnter={() => setHoveredVideo(i)}
-          onMouseLeave={() => setHoveredVideo(-1)}
-        >
-          <div>
-            <div style={{ position: "relative" }}>
-              {hoveredVideo === i && (
-                <button
-                  style={{
-                    position: "absolute",
-                    right: "6px",
-                    top: "6px",
-                    zIndex: 1,
-                    borderWidth: "3px",
-                    margin: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  className="dash-replay-button"
-                  onClick={() => videoRef[i]?.current?.handleError()}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16px"
-                    height="20px"
-                    style={{
-                      filter: "invert(1)",
-                    }}
-                    viewBox="0 0 16 20"
-                  >
-                    <g fill="none" fillRule="evenodd" stroke="none" strokeWidth="1">
-                      <g fill="#000" transform="translate(-2 -127)">
-                        <g transform="translate(2 127)">
-                          <path d="M8 4V0L3 5l5 5V6c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H0c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"></path>
-                        </g>
-                      </g>
-                    </g>
-                  </svg>
-                </button>
-              )}
-            </div>
-            <div data-vjs-player style={{position: 'relative', top: '0', left: '0'}}>
-            <video
-              onError={() => videoRef[i]?.current?.handleError()}
-              muted={true}
-              controls={true}
-              ref={videoRef[i]}
-              className="video-js"
-            />
-            </div>
-          </div>
-        </div>
-      ))}
+      {videoIndexes.map((i) => (i == 'chat' ? renderChat(videoIndexes.length) : renderVideo(i)))}
     </div>
   );
 }
