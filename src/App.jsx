@@ -147,12 +147,6 @@ const App = () => {
         </div>
         <div data-vjs-player className="video-player">
           <video
-            style={{
-              width: `calc((100vh / 9) * (16 / ${
-                calculateFactor(videoIndexes.length) * ((i == 6 ? 3 : 4) / 3)
-              }))`,
-              height: `calc(100vh / ${calculateFactor(videoIndexes.length)})`
-            }}
             onError={() => videoRef[i]?.current?.handleError()}
             muted={true}
             controls={true}
