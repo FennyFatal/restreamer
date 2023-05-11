@@ -76,35 +76,6 @@ const App = () => {
   
   const [hoveredVideo, setHoveredVideo] = React.useState(-1)
 
-  const calculateFactor = (total) => {
-    if ( total <= 1 ) return 1;
-    if ( total <= 4 ) return 2;
-    return 3;
-  };
-
-  const renderChat = (total) => (
-    <div
-      ref={listRef}
-      className="chat-container"
-      style={{
-        width: `calc((((100vh / 9) * 16) - ((100vh / 9) * 8) - ((100vh / 9) * (16 / 3))) * ${3 / calculateFactor(total)} )`,
-        height: `calc(100vh / ${calculateFactor(total)})`
-      }}
-      
-    >
-      {messageListRef.current.map((x) => (
-        <p className="chat-message">
-          <span
-            style={{ color: x?.payload?.user?.customUsernameColor ?? "white" }}
-          >
-            {x?.payload?.user?.displayName ?? "UNKNOWN USER"}
-          </span>
-          : {`${x?.payload?.message}`}
-        </p>
-      ))}
-    </div>
-  );
-  
   const renderRefreshButton = (i) => (
     <button
       className="refresh-button dash-replay-button"
@@ -128,39 +99,83 @@ const App = () => {
     </button>
   );
 
-  const renderVideo = (i) => (
-    <div
-      key={i}
-      className="video-container"
-      onMouseEnter={() => setHoveredVideo(i)}
-      onMouseLeave={() => setHoveredVideo(-1)}
-      style={{
-        width: `calc((100vh / 9) * (16 / ${
-          calculateFactor(videoIndexes.length) * ((i == 6 ? 3 : 4) / 3)
-        }))`,
-        height: `calc(100vh / ${calculateFactor(videoIndexes.length)})`
-      }}
-    >
-      <div>
-        <div style={{ position: "relative" }}>
-          {hoveredVideo === i && renderRefreshButton(i)}
-        </div>
-        <div data-vjs-player className="video-player">
-          <video
-            onError={() => videoRef[i]?.current?.handleError()}
-            muted={true}
-            controls={true}
-            ref={videoRef[i]}
-            className="video-js"
-          />
+  const aspectRatio = window.innerWidth / window.innerHeight;
+  const isWide = aspectRatio >= 16 / 9;
+
+  const calculateFactor = (total) => {
+    if ( total <= 2 ) return 1;
+    if ( total <= 4 ) return 2;
+    return 3;
+  };
+
+  const total = videoIndexes.length
+
+  const factor = calculateFactor(total);
+
+  const renderChat = (total) => {
+    const heightValue = isWide ? `calc(100vh / ${factor})` : `calc(100vh - (100vw * (9 / 16)))`;
+    const widthValue = isWide
+      ? `calc((((100vh / 9) * 16) - ((100vh / 9) * 8) - ((100vh / 9) * (16 / 3))) * ${3 / factor} )`
+      : `100vw`;
+  
+    return (
+      <div
+        ref={listRef}
+        className="chat-container"
+        style={{
+          width: widthValue,
+          height: heightValue,
+        }}
+      >
+        {messageListRef.current.map((x) => (
+          <p className="chat-message">
+            <span style={{ color: x?.payload?.user?.customUsernameColor ?? 'white' }}>
+              {x?.payload?.user?.displayName ?? 'UNKNOWN USER'}
+            </span>
+            : {`${x?.payload?.message}`}
+          </p>
+        ))}
+      </div>
+    );
+  };
+  
+  const renderVideo = (i) => {
+    const heightValue = isWide ? `calc(100vh / ${factor})` : `calc((100vw / ${factor}) * (9 / 16))`;
+    const widthValue = isWide
+      ? `calc((100vh / ${factor * ((i === 6 ? 3 : 4) / 3)}) * (16 / 9))`
+      : `calc((100vw / ${factor * ((i === 6 ? 3 : 4) / 3)})`;
+  
+    return (
+      <div
+        key={i}
+        className="video-container"
+        onMouseEnter={() => setHoveredVideo(i)}
+        onMouseLeave={() => setHoveredVideo(-1)}
+        style={{
+          width: widthValue,
+          height: heightValue,
+        }}
+      >
+        <div>
+          <div style={{ position: 'relative' }}>{hoveredVideo === i && renderRefreshButton(i)}</div>
+          <div data-vjs-player className="video-player">
+            <video
+              onError={() => videoRef[i]?.current?.handleError()}
+              muted={true}
+              controls={true}
+              ref={videoRef[i]}
+              className="video-js"
+            />
+          </div>
         </div>
       </div>
-    </div>
-  )
+    );
+  };
 
   return (
     <div
       style={{
+        width: isWide ? 'calc(((16/9) * 100vh))' : '100vw',
         display: "flex",
         flexWrap: "wrap",
         flexDirection: "row",
