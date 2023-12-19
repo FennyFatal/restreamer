@@ -13,13 +13,14 @@ const App = () => {
     const val = parseInt(x)
     return !Number.isNaN(val) ? val: x 
   }).filter(x => x != null)
-  const videoRef = Array(11).fill(1).map(x => React.useRef());
+  const videoRef = Array(20).fill(1).map(x => React.useRef());
   const [token, setToken] = useState();
   const videoIndexes = videoSelected.length ? videoSelected : Object.keys(videoRef).filter(x => x != null);
   console.log(videoIndexes)
-  const {
+  const lastMessage = null;
+  /*const {
     lastMessage,
-  } = useWebsocket(token)
+  } = useWebsocket(token)*/
   const messageListRef = useRef([])
   const listRef = useRef()
   let stayScrolled;
@@ -142,8 +143,8 @@ const App = () => {
   const renderVideo = (i) => {
     const heightValue = isWide ? `calc(100vh / ${factor})` : `calc((100vw / ${factor}) * (9 / 16))`;
     const widthValue = isWide
-      ? `calc((100vh / ${factor * ((i === 6 ? 3 : 4) / 3)}) * (16 / 9))`
-      : `calc((100vw / ${factor * ((i === 6 ? 3 : 4) / 3)})`;
+      ? `calc((100vh / ${factor * ((true ? 3 : 4) / 3)}) * (16 / 9))`
+      : `calc((100vw / ${factor * ((true ? 3 : 4) / 3)})`;
   
     return (
       <div
